@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aether Home</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#07080d;color:#fff;font-family:"SF Pro Display","Helvetica Neue",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#bg{position:fixed;inset:0;background:radial-gradient(120% 90% at 20% 0%,#2b3a67 0%,#141a33 45%,#07080d 100%);transition:background 1.2s}
+#bg.b1{background:radial-gradient(120% 90% at 80% 0%,#4a2a63 0%,#1e1233 45%,#07080d 100%)}
+#bg.b2{background:radial-gradient(120% 90% at 50% 0%,#1d5a63 0%,#0d2630 45%,#07080d 100%)}
+#bg.b3{background:radial-gradient(120% 90% at 10% 0%,#63341d 0%,#2e170d 45%,#07080d 100%)}
+#top{position:fixed;top:4vh;left:5vw;right:5vw;display:flex;justify-content:space-between;align-items:flex-start}
+#clock{font-size:3.4vw;font-weight:300;letter-spacing:-.02em}
+#date{font-size:1.5vw;opacity:.6;margin-top:.3vw}
+#hero{position:fixed;left:5vw;top:30vh;max-width:60vw}
+#hname{font-size:5.2vw;font-weight:700;letter-spacing:-.03em;line-height:1.05;transition:opacity .15s}
+#hsub{font-size:1.6vw;opacity:.6;margin-top:1vw}
+#row{position:fixed;left:0;right:0;bottom:12vh;height:21vw;display:flex;align-items:center;gap:2vw;padding:0 5vw;overflow:hidden;scroll-behavior:auto}
+.t{flex:0 0 auto;width:14vw;height:14vw;border-radius:2.2vw;background:#1c2038;display:flex;align-items:center;justify-content:center;position:relative;transform:translateZ(0);transition:transform .18s ease-out,box-shadow .18s ease-out;will-change:transform}
+.t img{width:62%;height:62%;object-fit:contain;border-radius:18%}
+.t .ph{font-size:5vw;font-weight:600;opacity:.8}
+.t.f{transform:scale(1.14) translateY(-.8vw);box-shadow:0 2.4vw 4vw rgba(0,0,0,.55),0 0 0 .22vw rgba(255,255,255,.9)}
+.t.f::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%)}
+.lbl{position:absolute;left:0;right:0;bottom:-2.6vw;text-align:center;font-size:1.3vw;opacity:0;transition:opacity .18s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t.f .lbl{opacity:.95}
+#hint{position:fixed;bottom:3.5vh;left:0;right:0;text-align:center;font-size:1.15vw;opacity:.4}
+.set{background:#2a2f4a}
+@media (prefers-reduced-motion:reduce){.t,#bg{transition:none}}
+</style></head><body>
+<div id="bg"></div>
+<div id="top"><div><div id="clock"></div><div id="date"></div></div></div>
+<div id="hero"><div id="hname"></div><div id="hsub">Press OK to open</div></div>
+<div id="row"></div>
+<div id="hint">Use the arrow keys to move, OK to open</div>
+<script>
+var apps=[],tiles=[],idx=0,row=document.getElementById('row'),bg=document.getElementById('bg'),hn=document.getElementById('hname');
+var hasA=typeof Android!=='undefined';
+function clock(){var d=new Date();document.getElementById('clock').textContent=d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});document.getElementById('date').textContent=d.toLocaleDateString([], {weekday:'long',day:'numeric',month:'long'})}
+clock();setInterval(clock,20000);
+function load(){
+  try{apps=hasA?JSON.parse(Android.getApps()):[{p:'x1',n:'Netflix'},{p:'x2',n:'YouTube'},{p:'x3',n:'Prime Video'},{p:'x4',n:'Music'},{p:'x5',n:'Photos'},{p:'x6',n:'Browser'}]}catch(e){apps=[]}
+  apps.push({p:'__settings',n:'Settings'});
+  row.innerHTML='';tiles=[];
+  apps.forEach(function(a,i){
+    var t=document.createElement('div');t.className='t'+(a.p==='__settings'?' set':'');
+    t.innerHTML='<div class="ph">'+a.n.charAt(0)+'</div><div class="lbl"></div>';
+    t.lastChild.textContent=a.n;
+    t.onclick=function(){idx=i;focus(i,true);open()};
+    row.appendChild(t);tiles.push(t);
+  });
+  idx=Math.min(idx,tiles.length-1);focus(idx);
+  if(hasA)iconQueue(0);
+}
+function iconQueue(i){
+  if(i>=apps.length-1)return;
+  setTimeout(function(){
+    var s=Android.getIcon(apps[i].p);
+    if(s){var t=tiles[i];t.innerHTML='<img src="'+s+'"><div class="lbl"></div>';t.lastChild.textContent=apps[i].n}
+    iconQueue(i+1)
+  },0);
+}
+function focus(i,snap){
+  tiles.forEach(function(t){t.classList.remove('f')});
+  var t=tiles[i];if(!t)return;t.classList.add('f');
+  hn.textContent=apps[i].n;
+  bg.className=['','b1','b2','b3'][i%4];
+  var target=t.offsetLeft-(window.innerWidth-t.offsetWidth)/2;
+  row.scrollLeft=Math.max(0,target);
+}
+function open(){var a=apps[idx];if(!a||!hasA)return;if(a.p==='__settings')Android.openSettings();else Android.launch(a.p)}
+document.addEventListener('keydown',function(e){
+  var k=e.keyCode;
+  if(k===39||k===22){if(idx<tiles.length-1)focus(++idx);e.preventDefault()}
+  else if(k===37||k===21){if(idx>0)focus(--idx);e.preventDefault()}
+  else if(k===13||k===23||k===66||k===32){open();e.preventDefault()}
+});
+window.refreshApps=function(){load()};
+window.goHome=function(){idx=0;focus(0)};
+load();
+</script></body></html>
